@@ -1,0 +1,1 @@
+"""Althra opportunity scout."""
