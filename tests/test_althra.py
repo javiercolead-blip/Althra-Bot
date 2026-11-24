@@ -117,3 +117,27 @@ def test_html_scout():
     html = '<div class="c"><h3><a href="/win/1">Win a Bike</a></h3><p>Canada only</p></div>'
     out = scout_html({"name": "h", "url": "https://x.ca/list", "item": "div.c", "title": "h3", "link": "a"}, html)
     assert out[0].link == "https://x.ca/win/1" and out[0].title == "Win a Bike"
+
+
+def test_structured_fields(profile):
+    """Formats seen on real Contest Canada posts (first live run, Nov 2026)."""
+    def e(title, summary):
+        return enrich(Opportunity(title=title, link=title, source="Contest Canada", summary=summary),
+                      profile, TODAY, "canada")
+    qc = e("Win a Canadian Tire gift card valued at $1,000", "Entry Frequency: daily Open to: QC")
+    assert (qc.eligible, qc.eligibility) == (False, "QC only")
+    multi = e("Win $20,000 or 1 of 19 prizes of $500",
+              "Entry Frequency: daily Open to: BC, ON, NB, NS Trivia/Product question response required")
+    assert multi.eligible and multi.eligibility.startswith("📍 BC, ON, NB, NS") and "keyword" in multi.eligibility
+    assert multi.frequency == "daily" and multi.value == 20000
+    notqc = e("Win a travel voucher valued at $4,325",
+              "Purchase a beverage at Swiss Chalet. Entry Frequency: unlimited Not open to: QC PIN required")
+    assert notqc.eligibility.startswith("🇨🇦 Canada") and "💸 purchase" in notqc.eligibility
+    assert notqc.score < e("Win a travel voucher valued at $4,325", "Entry Frequency: unlimited").score
+    pei = e("Win a Lawtons gift card valued at $500", "Entry Frequency: single Open to: NB, NS, PEI, NL")
+    assert (pei.eligible, pei.frequency) == (False, "once")
+    big = e("Win 1 of 10 McDonalds meals valued at $11,000",
+            "Good Canadian, we have $187,624 in new contest prize values today!")
+    assert big.value == 11000
+    local = e("Victoria – $100 gift FARO Handcrafted Pizza", "")
+    assert local.eligibility.startswith("📍")

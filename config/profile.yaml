@@ -6,6 +6,10 @@ province: British Columbia
 province_code: BC
 city: Vancouver
 timezone: America/Vancouver
+# Other places that count as "local" (smaller entry pool = better odds).
+local_places: [Metro Vancouver, Lower Mainland, Burnaby, Surrey, Richmond, Coquitlam,
+               North Vancouver, West Vancouver, New Westminster, Langley, Delta,
+               Abbotsford, Victoria, Kelowna, Nanaimo, Kamloops, Whistler, Squamish]
 student: false          # finishing school — flip to true if a contest wants current students
 
 # Words that make a contest worth more to you (adds to its score).

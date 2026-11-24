@@ -14,6 +14,9 @@ STATUS_ORDER = {s: i for i, s in enumerate(
     [ENTER_AGAIN, TO_ENTER, NEW, ENTERED, WON, EXPIRED, SKIP, INELIGIBLE])}
 
 
+UNDATED_DAYS = 30
+
+
 class Tracker:
     def __init__(self, path: Path):
         self.path = path
@@ -70,6 +73,11 @@ class Tracker:
                 # refresh details the scout may now know better, keep your progress
                 old.summary = o.summary or old.summary
                 old.ends = o.ends or old.ends
+                if old.status in (NEW, TO_ENTER, INELIGIBLE):   # not acted on yet: re-judge
+                    for f in ("prize", "value", "frequency", "eligible", "eligibility", "score"):
+                        setattr(old, f, getattr(o, f))
+                    if old.status == INELIGIBLE and old.eligible:
+                        old.status = NEW
                 continue
             self.items[o.id] = o
             new.append(o)
@@ -82,7 +90,10 @@ class Tracker:
             if not o.eligible and o.status in (NEW, TO_ENTER):
                 o.status = INELIGIBLE
                 continue
-            ended = o.ends is not None and o.ends < today
+            if o.ends is not None:
+                ended = o.ends < today
+            else:  # no end date known: assume most contests run about a month
+                ended = (today - (o.found or today)).days > UNDATED_DAYS
             if ended and o.status in (NEW, TO_ENTER, ENTER_AGAIN):
                 o.status = EXPIRED
                 continue

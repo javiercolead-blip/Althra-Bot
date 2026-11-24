@@ -92,17 +92,43 @@ def estimate_value(text: str) -> float:
     return 0.0
 
 
-def check_eligibility(text: str, profile: dict) -> tuple[bool, str]:
+# Structured fields used by Contest Canada and similar listing sites.
+OPEN_TO = re.compile(r"(?<![Nn]ot )\b[Oo]pen to:\s*((?:PEI|[A-Z]{2})(?:\s*,\s*(?:PEI|[A-Z]{2}))*)")
+NOT_OPEN_TO = re.compile(r"\b[Nn]ot open to:\s*((?:PEI|[A-Z]{2})(?:\s*,\s*(?:PEI|[A-Z]{2}))*)")
+FREQ_FIELD = re.compile(r"Entry Frequency:\s*(\w+)", re.I)
+
+# Extra effort / cost flags: (pattern, label, score penalty)
+FLAGS = [
+    (re.compile(r"\bwith (a |any )?purchase|\bpurchase (a|an|any)\b|\breceipt\b|\bPIN required|\border from\b|\bbuy (a|an|any)\b", re.I), "💸 purchase", -15),
+    (re.compile(r"Trivia/Product question|\bkeywords?\b|\blisten to\b|lucky song|boarding call", re.I), "🔑 keyword/trivia", -5),
+    (re.compile(r"Membership required|create an account|sign up for", re.I), "👤 account", -3),
+    (SOCIAL, "📱 social", 0),
+]
+
+
+def _codes(raw: str) -> list[str]:
+    return ["PE" if c.strip() == "PEI" else c.strip() for c in raw.split(",")]
+
+
+def check_eligibility(text: str, profile: dict, region: str = "") -> tuple[bool, str]:
     low = text.lower()
     my_code = profile.get("province_code", "BC")
     my_names = PROVINCES.get(my_code, [])
 
+    # ---- hard "no"s ---------------------------------------------------
     for word in profile.get("blocklist", []):
         if word.lower() in low:
             return False, f"Blocked word: {word}"
 
+    m = NOT_OPEN_TO.search(text)
+    if m and my_code in _codes(m.group(1)):
+        return False, f"Excludes {my_code}"
     if re.search(rf"exclud\w*[^.]{{0,60}}({'|'.join(map(re.escape, my_names + [my_code.lower()]))})\b", low):
         return False, f"Excludes {my_code}"
+
+    open_to = OPEN_TO.search(text)
+    if open_to and my_code not in _codes(open_to.group(1)):
+        return False, f"{', '.join(_codes(open_to.group(1)))} only"
 
     # "<Province> residents only" / "open to residents of <Province>" for a province that isn't ours
     for code, names in PROVINCES.items():
@@ -112,7 +138,7 @@ def check_eligibility(text: str, profile: dict) -> tuple[bool, str]:
             if re.search(rf"\b{re.escape(n)}\s+residents\s+only|open (only )?to (legal )?residents of {re.escape(n)}\b(?![^.]{{0,80}}{my_names[0] if my_names else '@@'})", low):
                 return False, f"{code} residents only"
 
-    is_canada = bool(CANADA.search(text))
+    is_canada = bool(CANADA.search(text)) or region == "canada"
     if US_ONLY.search(text) and not is_canada:
         return False, "US only"
 
@@ -124,9 +150,13 @@ def check_eligibility(text: str, profile: dict) -> tuple[bool, str]:
     if STUDENT_ONLY.search(text) and not profile.get("student"):
         return False, "Students only"
 
-    local = any(re.search(rf"\b{re.escape(n)}\b", low) for n in my_names) or \
-        re.search(rf"\b{my_code.lower()}\s+residents\b|\b{re.escape(profile.get('city', '@@').lower())}\b", low)
-    if local:
+    # ---- eligible: how small is the pool? ------------------------------
+    if open_to:  # restricted to a list of provinces that includes ours
+        codes = _codes(open_to.group(1))
+        return True, f"📍 {my_code} only" if codes == [my_code] else f"📍 {', '.join(codes)}"
+    places = my_names + [profile.get("city", "")] + profile.get("local_places", [])
+    if any(p and re.search(rf"\b{re.escape(p.lower())}\b", low) for p in places) or \
+            re.search(rf"\b{my_code.lower()}\s+residents\b", low):
         return True, f"📍 {my_code} / local"
     if is_canada:
         return True, "🇨🇦 Canada"
@@ -148,18 +178,31 @@ def score(o: Opportunity, profile: dict, today: date) -> float:
         s += 5                                    # closing soon: fewer people enter late
     if o.value == 0:
         s += 5                                    # unknown value shouldn't sink it entirely
+    s += sum(pen for pat, label, pen in FLAGS if label in o.eligibility)
     return round(max(s, 1.0), 1)
 
 
-def enrich(o: Opportunity, profile: dict, today: date | None = None) -> Opportunity:
+def enrich(o: Opportunity, profile: dict, today: date | None = None, region: str = "") -> Opportunity:
     today = today or date.today()
     text = f"{o.title}. {o.summary}"
     o.prize = re.sub(r"^\s*(\[[^\]]*\]\s*)*(contest:|giveaway:|win\b:?(\s+an?\b)?)?\s*", "", o.title, flags=re.I)[:120]
-    o.value = estimate_value(text)
+    # The title usually states the actual prize; summaries can include unrelated
+    # totals ("$187,624 in prizes today"), so only fall back to them.
+    o.value = estimate_value(o.title) or estimate_value(o.summary)
+    m = re.search(r"\b1 of (\d+)\b.*total value", o.title, re.I)
+    if m:
+        o.value = round(o.value / int(m.group(1)))
     o.ends = o.ends or find_end_date(text, today)
-    o.frequency = "daily" if DAILY.search(text) else "weekly" if WEEKLY.search(text) else "once"
-    o.eligible, o.eligibility = check_eligibility(text, profile)
-    if o.eligible and SOCIAL.search(text):
-        o.eligibility += " · social entry"
+    f = FREQ_FIELD.search(text)
+    f = f.group(1).lower() if f else ""
+    if f in ("daily", "unlimited") or (not f and DAILY.search(text)):
+        o.frequency = "daily"
+    elif f == "weekly" or (not f and WEEKLY.search(text)):
+        o.frequency = "weekly"
+    else:
+        o.frequency = "once"
+    o.eligible, o.eligibility = check_eligibility(text, profile, region)
+    if o.eligible:
+        o.eligibility += "".join(f" · {label}" for pat, label, _ in FLAGS if pat.search(text))
     o.score = score(o, profile, today)
     return o

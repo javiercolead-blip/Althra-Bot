@@ -32,7 +32,9 @@ def run(queue_size: int, fetcher=fetch) -> None:
     log.info("[sheet] picked up %d edits from %s", changed, "Google Sheets" if sheet else "Excel")
 
     # 2. Scout.
-    found = [enrich(o, profile, today) for o in run_scouts(load_sources(), fetcher)]
+    sources = load_sources()
+    region = {src["name"]: src.get("region", "") for src in sources}
+    found = [enrich(o, profile, today, region.get(o.source, "")) for o in run_scouts(sources, fetcher)]
     new = tracker.add_found(found)
     log.info("[scout] %d found, %d new", len(found), len(new))
 

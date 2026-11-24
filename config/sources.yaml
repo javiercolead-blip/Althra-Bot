@@ -2,43 +2,39 @@
 #
 # type: rss   -> any RSS or Atom feed (most contest blogs are WordPress: add /feed/)
 # type: html  -> a listing page; give CSS selectors for each contest block
+# region: canada -> the site only lists Canadian contests, so treat them as
+#                   open to Canada unless the post says otherwise
 #
-# NOTE: these were picked as likely Canadian giveaway sources but could not be
-# tested from the build environment (its network blocks them). The first
-# GitHub Actions run logs "[scout] <name>: N items" for each; any that show
-# 0 items or an error should be fixed or disabled (enabled: false).
+# Each run's log shows "[scout] <name>: N items" or "FAILED (...)" per source.
 
 sources:
-  - name: Contest Canada
+  - name: Contest Canada          # ✅ 25 items on first run — the best source so far
     type: rss
     url: https://www.contestcanada.net/feed/
+    region: canada
 
-  - name: Contest Queen
-    type: rss
-    url: https://contestqueen.ca/feed/
-
-  - name: Canadian Contests
+  - name: Canadian Contests       # ✅ 10 items on first run
     type: rss
     url: https://www.canadiancontests.ca/feed/
+    region: canada
 
-  - name: Best Canadian Contests
+  # ---- failed on the first run (2026-11-24) -----------------------------
+  - name: Contest Queen           # 404: no feed at this address
     type: rss
+    enabled: false
+    url: https://contestqueen.ca/feed/
+
+  - name: Best Canadian Contests  # domain doesn't exist
+    type: rss
+    enabled: false
     url: https://www.bestcanadiancontests.com/feed/
 
-  - name: r/CanadianContests
+  - name: r/CanadianContests      # 404: subreddit not found
     type: rss
+    enabled: false
     url: https://www.reddit.com/r/CanadianContests/new/.rss
 
-  - name: RedFlagDeals Contests
+  - name: RedFlagDeals Contests   # 403: blocks automated requests
     type: rss
-    url: https://forums.redflagdeals.com/feed/forum/20
-
-  # Example HTML source (disabled until selectors are confirmed):
-  - name: ContestGirl (Canada)
-    type: html
     enabled: false
-    url: https://www.contestgirl.com/contests/contests.pl?ar=na
-    item: "table.contests tr"
-    title: "a"
-    link: "a"
-    summary: "td"
+    url: https://forums.redflagdeals.com/feed/forum/20
