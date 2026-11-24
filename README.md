@@ -6,10 +6,11 @@ You still click **Submit** yourself. Most contest rules disqualify automated ent
 
 ## Your daily routine (about 15 minutes)
 
-1. Open the **Tracker** sheet. Rows needing action are at the top.
+1. Download `data/tracker.xlsx` and open the **Tracker** sheet. Rows needing action are at the top.
 2. Work through the **🔁 Enter Again** and **⭐ To Enter** rows. Open the link, enter, and set the status to **✅ Entered**.
 3. If you win, set the row to **🏆 Won**.
-4. Found a contest somewhere else? Paste its link in a new row. The bot picks it up on the next run.
+4. Found a contest somewhere else? Paste its link in a new row.
+5. Upload the file back to `data/` so the bot sees your changes.
 
 | Status | Colour | Meaning |
 |---|---|---|
@@ -48,16 +49,22 @@ Google Sheet / tracker.xlsx ◀─▶ tracker (merges your edits, sets statuses,
 
 ## Setup
 
-### 1. Google Sheet (one time, about 10 minutes)
+### 1. Your Excel tracker
+
+The bot keeps the tracker at **`data/tracker.xlsx`** in this repo and updates it on every run.
+
+- **To open it:** on GitHub, go to `data/tracker.xlsx` and click **Download (⤓)**. It opens in Excel with the colours and the status dropdown.
+- **To save your changes back:** after updating statuses, go to the `data` folder on GitHub, click **Add file → Upload files**, drop in your `tracker.xlsx` (keep the same name) and click **Commit changes**. The next run reads your statuses.
+
+If you skip the upload, nothing breaks. The bot still adds new finds, but it won't know which ones you entered.
+
+<details><summary>Optional: Google Sheets instead</summary>
 
 1. Go to https://console.cloud.google.com, create a project, and enable the **Google Sheets API**.
-2. Go to **IAM & Admin → Service Accounts → Create**, then open the account and choose **Keys → Add key → JSON**. A key file downloads.
-3. Create an empty Google Sheet. Click **Share** and add the service account's email (`…@….iam.gserviceaccount.com`) as an **Editor**.
-4. In this GitHub repo, go to **Settings → Secrets and variables → Actions** and add two secrets:
-   - `GOOGLE_SHEET_ID`: the long id in the sheet URL (`docs.google.com/spreadsheets/d/<THIS>/edit`)
-   - `GOOGLE_SERVICE_ACCOUNT_JSON`: the full contents of the key file
-
-Without these secrets the bot still runs, but it only updates `data/tracker.xlsx` in the repo.
+2. Go to **IAM & Admin → Service Accounts → Create**, then choose **Keys → Add key → JSON**.
+3. Share an empty Google Sheet with the service account's email as an **Editor**.
+4. Add repo secrets `GOOGLE_SHEET_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON`. When they're set, the Google Sheet becomes the one you edit.
+</details>
 
 ### 2. Turn it on
 
