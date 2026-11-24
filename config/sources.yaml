@@ -1,0 +1,44 @@
+# Where the scouts look. Add / remove freely.
+#
+# type: rss   -> any RSS or Atom feed (most contest blogs are WordPress: add /feed/)
+# type: html  -> a listing page; give CSS selectors for each contest block
+#
+# NOTE: these were picked as likely Canadian giveaway sources but could not be
+# tested from the build environment (its network blocks them). The first
+# GitHub Actions run logs "[scout] <name>: N items" for each; any that show
+# 0 items or an error should be fixed or disabled (enabled: false).
+
+sources:
+  - name: Contest Canada
+    type: rss
+    url: https://www.contestcanada.net/feed/
+
+  - name: Contest Queen
+    type: rss
+    url: https://contestqueen.ca/feed/
+
+  - name: Canadian Contests
+    type: rss
+    url: https://www.canadiancontests.ca/feed/
+
+  - name: Best Canadian Contests
+    type: rss
+    url: https://www.bestcanadiancontests.com/feed/
+
+  - name: r/CanadianContests
+    type: rss
+    url: https://www.reddit.com/r/CanadianContests/new/.rss
+
+  - name: RedFlagDeals Contests
+    type: rss
+    url: https://forums.redflagdeals.com/feed/forum/20
+
+  # Example HTML source (disabled until selectors are confirmed):
+  - name: ContestGirl (Canada)
+    type: html
+    enabled: false
+    url: https://www.contestgirl.com/contests/contests.pl?ar=na
+    item: "table.contests tr"
+    title: "a"
+    link: "a"
+    summary: "td"

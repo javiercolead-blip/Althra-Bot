@@ -1,0 +1,44 @@
+name: Scout
+
+on:
+  schedule:
+    # 6:17am and 5:17pm Vancouver time (UTC-8 in winter; an hour later in summer)
+    - cron: "17 14 * * *"
+    - cron: "17 1 * * *"
+  workflow_dispatch: {}   # "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scout
+  cancel-in-progress: false
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run scouts and update tracker
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          ALTHRA_QUEUE_SIZE: ${{ vars.ALTHRA_QUEUE_SIZE || '25' }}
+        run: python -m althra run
+
+      - name: Save tracker state
+        run: |
+          git config user.name "althra-bot"
+          git config user.email "althra-bot@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "scout: update tracker $(date -u +%F)"
+          git push

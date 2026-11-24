@@ -1,0 +1,26 @@
+# Your eligibility profile. The filter uses this to drop contests you can't win.
+name: Javier
+age: 23
+country: Canada
+province: British Columbia
+province_code: BC
+city: Vancouver
+timezone: America/Vancouver
+student: false          # finishing school — flip to true if a contest wants current students
+
+# Words that make a contest worth more to you (adds to its score).
+interests:
+  - tech
+  - laptop
+  - headphones
+  - gift card
+  - cash
+  - travel
+  - concert
+  - sneakers
+
+# Skip anything mentioning these (e.g. stuff you'd never use).
+blocklist:
+  - casino
+  - crypto
+  - purchase required
